@@ -1,0 +1,91 @@
+- name: Crear Intancia que contendra Jellyfin
+  hosts: localhost
+  connection: local
+  vars_files:
+    - ../vars.yml
+    
+  tasks:
+
+    - name: Crear security group
+      amazon.aws.ec2_security_group:
+        name: "jellifyn-sg"
+        description: "Security group para Jellyfin"
+        region: "{{ region }}"
+        rules:
+          - proto: tcp
+            ports: 22
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            ports: [8096]
+            cidr_ip: 0.0.0.0/0
+      register: sg
+    - name: Crear instancia EC2
+      amazon.aws.ec2_instance:
+        name: "jellyfin-server"
+        region: "{{ region }}"
+        instance_type: t3.small 
+        image_id: "{{ ami_id }}"
+        key_name: "{{ key_name }}"
+        security_group: "{{ sg.group_id }}"
+        volumes:
+          - device_name: /dev/sda1 #disco duro de la instnacia
+            ebs:
+              volume_size: 20 #si no el contenedor no corre img es pesada
+              volume_type: gp3
+              delete_on_termination: true
+        wait: true
+      register: ec2
+    - name: Mostrar ip publica
+      debug:
+        msg: "IP Jellyfin funcionando: http://{{ ec2.instances[0].public_ip_address }}:8096"
+    
+    - name: Agregar instancia al inventario
+      add_host:
+        hostname: "{{ ec2.instances[0].public_ip_address }}"
+        groupname: jellyfin_server
+        ansible_user: ubuntu
+        ansible_ssh_private_key_file: "../{{ key_name }}.pem"
+        ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+
+    - name: Esperar que SSH este listo
+      wait_for:
+        host: "{{ ec2.instances[0].public_ip_address }}"
+        port: 22
+        timeout: 60
+
+- name: Instalar Docker y correr Jellyfin
+  hosts: jellyfin_server
+  become: true
+
+  tasks:
+    - name: Actualizar paquetes
+      apt:
+        update_cache: yes
+
+    - name: Instalar Docker
+      apt:
+        name: docker.io
+        state: present
+
+    - name: Iniciar Docker
+      systemd:
+        name: docker
+        enabled: true
+        state: started
+
+    - name: Crear carpeta media
+      file:
+        path: /home/ubuntu/media
+        state: directory
+
+    - name: Correr contenedor Jellyfin
+      community.docker.docker_container:
+        name: jellyfin-container
+        image: jellyfin/jellyfin
+        state: started
+        ports:
+          - "8096:8096"
+        volumes:
+          - /home/ubuntu/media:/media
+        restart_policy: unless-stopped
+   

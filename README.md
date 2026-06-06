@@ -34,10 +34,10 @@ pip install -r requirements.txt
 aws configure
 ```
 Ingresa tu AWS Access Key ID y AWS Secret Access Key.
-> ⚠️ Las credenciales se descargan una sola vez desde la consola de AWS. Guárdalas en un lugar seguro.
+Las credenciales se descargan una sola vez desde la consola de AWS. Guárdalas en un lugar seguro.
 
 5. Coloca tu archivo `.pem` en la raíz del proyecto
-> ⚠️ El archivo `.pem` nunca debe subirse a GitHub. Ya está incluido en `.gitignore`.
+El archivo `.pem` nunca debe subirse a GitHub. Ya está incluido en `.gitignore`.
 
 6. Configura `vars.yml` con tus valores
 ```yaml
@@ -50,7 +50,9 @@ key_name: nombre-de-tu-llave  # sin el .pem
 
 ```bash
 cd playbooks
-ansible-playbook creacion_instancia.yml
+ansible-playbook creacion_instancia.yml  ->  esto en caso de quererlo hacer en el entorno CLOUD
+ansible-playbook jellyfinlocal.yml  ->  esto en caso de querer hacerlo en un entorno LOCAL
 ```
 
-Al finalizar, Ansible mostrará la IP pública. Abre en tu navegador:
+Al finalizar, Ansible mostrará la IP pública. Abre en tu navegador: http//[ip publica]:8096
+O en caso de haberlo hecho localmente simplemente entrar a: localhost:8096
